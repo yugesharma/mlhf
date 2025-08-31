@@ -2,7 +2,7 @@ name: Discord Notification
 
 on:
   push:
-    branches: [main]
+    branches: [case_study_1_2025]
 
 jobs:
   notify:
