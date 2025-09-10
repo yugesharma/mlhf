@@ -5,13 +5,13 @@ import requests
 from datetime import datetime
 
 SPORTS_IO_API_KEY = os.getenv("6f9c8d8609a744ce88440fec15e711b7")
-NEWS_URL = "https://api.sportsdata.io/v3/nfl/scores/json/News?key="
-PLAYERS_URL = "https://api.sportsdata.io/v3/nfl/scores/json/Players?key="
-PLAYER_STATS_URL = "https://api.sportsdata.io/v3/nfl/stats/json/PlayerSeasonStatsByPlayerID/{season}/{playerid}?key="
+NEWS_URL = "https://api.sportsdata.io/v3/nfl/scores/json/News?key=6f9c8d8609a744ce88440fec15e711b7"
+PLAYERS_URL = "https://api.sportsdata.io/v3/nfl/scores/json/Players?key=6f9c8d8609a744ce88440fec15e711b7"
+PLAYER_STATS_URL = "https://api.sportsdata.io/v3/nfl/stats/json/PlayerSeasonStatsByPlayerID/{season}/{playerid}?key=6f9c8d8609a744ce88440fec15e711b7"
 
 CURRENT_SEASON = 2025
 
-headers = {"Ocp-Apim-Subscription-Key": SPORTS_IO_API_KEY}
+#headers = {"Ocp-Apim-Subscription-Key": SPORTS_IO_API_KEY}
 
 # Fancy styling
 fancy_css = """
@@ -55,7 +55,7 @@ fancy_css = """
 
 def fetch_news(query: str):
     try:
-        resp = requests.get(NEWS_URL+SPORTS_IO_API_KEY, headers=headers, timeout=10)
+        resp = requests.get(NEWS_URL, timeout=10)
         resp.raise_for_status()
         articles = resp.json()
     except Exception as e:
@@ -84,7 +84,7 @@ def fetch_news(query: str):
 
 def fetch_player_stats(player_name: str):
     try:
-        resp = requests.get(PLAYERS_URL+SPORTS_IO_API_KEY, headers=headers, timeout=15)
+        resp = requests.get(PLAYERS_URL, timeout=15)
         resp.raise_for_status()
         players = resp.json()
     except Exception as e:
@@ -102,7 +102,7 @@ def fetch_player_stats(player_name: str):
     # Fetch season stats
     try:
         stats_url = PLAYER_STATS_URL.format(season=CURRENT_SEASON, playerid=player_id)
-        resp = requests.get(stats_url+SPORTS_IO_API_KEY, headers=headers, timeout=10)
+        resp = requests.get(stats_url, timeout=10)
         resp.raise_for_status()
         stats = resp.json()
     except Exception as e:
