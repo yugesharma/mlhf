@@ -113,19 +113,19 @@ def fetch_player_stats(player_name: str):
 
     formatted = f"### 📊 {player_name} ({team}, {position}) — {CURRENT_SEASON} Season Stats\n"
     if position in ["QB", "Quarterback"]:
-        formatted += f"- Passing Yards: {stats.get('PassingYards', 0)}\n"
-        formatted += f"- Passing TDs: {stats.get('PassingTouchdowns', 0)}\n"
-        formatted += f"- Interceptions: {stats.get('PassingInterceptions', 0)}\n"
+        formatted += f"- Passing Yards: {stats[0].get('PassingYards', 0)}\n"
+        formatted += f"- Passing TDs: {stats[0].get('PassingTouchdowns', 0)}\n"
+        formatted += f"- Interceptions: {stats[0].get('PassingInterceptions', 0)}\n"
     elif position in ["RB", "Running Back"]:
-        formatted += f"- Rushing Yards: {stats.get('RushingYards', 0)}\n"
-        formatted += f"- Rushing TDs: {stats.get('RushingTouchdowns', 0)}\n"
+        formatted += f"- Rushing Yards: {stats[0].get('RushingYards', 0)}\n"
+        formatted += f"- Rushing TDs: {stats[0].get('RushingTouchdowns', 0)}\n"
     elif position in ["WR", "TE"]:
-        formatted += f"- Receiving Yards: {stats.get('ReceivingYards', 0)}\n"
-        formatted += f"- Receiving TDs: {stats.get('ReceivingTouchdowns', 0)}\n"
-        formatted += f"- Receptions: {stats.get('Receptions', 0)}\n"
+        formatted += f"- Receiving Yards: {stats[0].get('ReceivingYards', 0)}\n"
+        formatted += f"- Receiving TDs: {stats[0].get('ReceivingTouchdowns', 0)}\n"
+        formatted += f"- Receptions: {stats[0].get('Receptions', 0)}\n"
     else:
-        formatted += f"- Games Played: {stats.get('Played', 0)}\n"
-        formatted += f"- Fantasy Points: {stats.get('FantasyPoints', 0)}\n"
+        formatted += f"- Games Played: {stats[0].get('Played', 0)}\n"
+        formatted += f"- Fantasy Points: {stats[0].get('FantasyPoints', 0)}\n"
 
     return formatted
 
@@ -141,15 +141,18 @@ def nfl_chatbot(query: str, history: list):
     history.append((query, reply))
     return history, ""
 
+
+
 with gr.Blocks(css=fancy_css) as demo:
     gr.Markdown("# 🏈 NFL News + Stats Chatbot")
     gr.Markdown("Ask about any NFL player or coach for the **latest news and stats**.")
 
     chatbot = gr.Chatbot()
     query = gr.Textbox(label="Enter player or coach name")
-    btn = gr.Button("Get Update")
+    stats_btn = gr.Button("Get Stats")
+    news_btn = gr.Button("Get News")
 
-    btn.click(nfl_chatbot, [query, chatbot], [chatbot, query])
+    stats_btn.click(nfl_chatbot, [query, chatbot], [chatbot, query])
     query.submit(nfl_chatbot, [query, chatbot], [chatbot, query])
 
 if __name__ == "__main__":
