@@ -4,10 +4,10 @@ import os
 import requests
 from datetime import datetime
 
-SPORTS_IO_API_KEY = os.getenv("6f9c8d8609a744ce88440fec15e711b7")
-NEWS_URL = "https://api.sportsdata.io/v3/nfl/scores/json/News?key=6f9c8d8609a744ce88440fec15e711b7"
-PLAYERS_URL = "https://api.sportsdata.io/v3/nfl/scores/json/Players?key=6f9c8d8609a744ce88440fec15e711b7"
-PLAYER_STATS_URL = "https://api.sportsdata.io/v3/nfl/stats/json/PlayerSeasonStatsByPlayerID/{season}/{playerid}?key=6f9c8d8609a744ce88440fec15e711b7"
+SPORTS_IO_API_KEY = os.getenv("SPORTS_API_KEY")
+NEWS_URL = f"https://api.sportsdata.io/v3/nfl/scores/json/News?key={SPORTS_IO_API_KEY}"
+PLAYERS_URL = f"https://api.sportsdata.io/v3/nfl/scores/json/Players?key={SPORTS_IO_API_KEY}"
+PLAYER_STATS_URL = "https://api.sportsdata.io/v3/nfl/stats/json/PlayerSeasonStatsByPlayerID/{season}/{playerid}?key={api_key}"
 
 CURRENT_SEASON = 2025
 
@@ -102,7 +102,7 @@ def fetch_player_stats(player_name: str):
 
     # Fetch season stats
     try:
-        stats_url = PLAYER_STATS_URL.format(season=CURRENT_SEASON, playerid=player_id)
+        stats_url = PLAYER_STATS_URL.format(season=CURRENT_SEASON, playerid=player_id, api_key = SPORTS_IO_API_KEY)
         resp = requests.get(stats_url, timeout=10)
         resp.raise_for_status()
         stats = resp.json()
