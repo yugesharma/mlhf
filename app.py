@@ -1,9 +1,17 @@
 import gradio as gr
 from huggingface_hub import InferenceClient
 import os
+import requests
+from datetime import datetime
 
-pipe = None
-stop_inference = False
+SPORTS_IO_API_KEY = os.getenv("6f9c8d8609a744ce88440fec15e711b7")
+NEWS_URL = "https://api.sportsdata.io/v3/nfl/scores/json/News"
+PLAYERS_URL = "https://api.sportsdata.io/v3/nfl/scores/json/Players"
+PLAYER_STATS_URL = "https://api.sportsdata.io/v3/nfl/stats/json/PlayerSeasonStatsByPlayerID/{season}/{playerid}"
+
+CURRENT_SEASON = 2025
+
+headers = {"Ocp-Apim-Subscription-Key": SPORTS_IO_API_KEY}
 
 # Fancy styling
 fancy_css = """
@@ -44,6 +52,114 @@ fancy_css = """
     color: #333;
 }
 """
+
+def fetch_news(query: str):
+    try:
+        resp = requests.get(NEWS_URL, headers=headers, timeout=10)
+        resp.raise_for_status()
+        articles = resp.json()
+    except Exception as e:
+        return f"⚠️ News API error: {e}"
+
+    results = []
+    for article in articles:
+        if query.lower() in (article.get("Title", "") + article.get("Content", "")).lower():
+            date = datetime.fromisoformat(article["Updated"].replace("Z", "+00:00"))
+            results.append({
+                "title": article["Title"],
+                "content": article["Content"],
+                "source": article["Source"],
+                "updated": date.strftime("%B %d, %Y %I:%M %p")
+            })
+
+    if not results:
+        return f"No news found for '{query}'."
+
+    results = sorted(results, key=lambda x: x["updated"], reverse=True)[:3]
+    formatted = "### 📰 Latest News\n"
+    for r in results:
+        formatted += f"**{r['title']}**  \n{r['content'][:250]}...  \n"
+        formatted += f"_Source: {r['source']} • {r['updated']}_\n\n"
+    return formatted
+
+def fetch_player_stats(player_name: str):
+    try:
+        resp = requests.get(PLAYERS_URL, headers=headers, timeout=15)
+        resp.raise_for_status()
+        players = resp.json()
+    except Exception as e:
+        return f"⚠️ Player lookup error: {e}"
+
+    # Find player by name
+    player = next((p for p in players if player_name.lower() in p["Name"].lower()), None)
+    if not player:
+        return None  # Not a player
+
+    player_id = player["PlayerID"]
+    team = player.get("Team", "Unknown")
+    position = player.get("Position", "N/A")
+
+    # Fetch season stats
+    try:
+        stats_url = PLAYER_STATS_URL.format(season=CURRENT_SEASON, playerid=player_id)
+        resp = requests.get(stats_url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        stats = resp.json()
+    except Exception as e:
+        return f"⚠️ Stats fetch error: {e}"
+
+    if not stats:
+        return f"📊 No stats available yet for {player_name} ({CURRENT_SEASON})."
+
+    formatted = f"### 📊 {player_name} ({team}, {position}) — {CURRENT_SEASON} Season Stats\n"
+    if position in ["QB", "Quarterback"]:
+        formatted += f"- Passing Yards: {stats.get('PassingYards', 0)}\n"
+        formatted += f"- Passing TDs: {stats.get('PassingTouchdowns', 0)}\n"
+        formatted += f"- Interceptions: {stats.get('PassingInterceptions', 0)}\n"
+    elif position in ["RB", "Running Back"]:
+        formatted += f"- Rushing Yards: {stats.get('RushingYards', 0)}\n"
+        formatted += f"- Rushing TDs: {stats.get('RushingTouchdowns', 0)}\n"
+    elif position in ["WR", "TE"]:
+        formatted += f"- Receiving Yards: {stats.get('ReceivingYards', 0)}\n"
+        formatted += f"- Receiving TDs: {stats.get('ReceivingTouchdowns', 0)}\n"
+        formatted += f"- Receptions: {stats.get('Receptions', 0)}\n"
+    else:
+        formatted += f"- Games Played: {stats.get('Played', 0)}\n"
+        formatted += f"- Fantasy Points: {stats.get('FantasyPoints', 0)}\n"
+
+    return formatted
+
+def nfl_chatbot(query: str, history: list):
+    news = fetch_news(query)
+    stats = fetch_player_stats(query)
+
+    if stats is None:
+        reply = f"{news}\n\n(ℹ️ No player stats — likely a coach.)"
+    else:
+        reply = f"{news}\n\n{stats}"
+
+    history.append((query, reply))
+    return history, ""
+
+with gr.Blocks(css=fancy_css) as demo:
+    gr.Markdown("# 🏈 NFL News + Stats Chatbot")
+    gr.Markdown("Ask about any NFL player or coach for the **latest news and stats**.")
+
+    chatbot = gr.Chatbot()
+    query = gr.Textbox(label="Enter player or coach name")
+    btn = gr.Button("Get Update")
+
+    btn.click(nfl_chatbot, [query, chatbot], [chatbot, query])
+    query.submit(nfl_chatbot, [query, chatbot], [chatbot, query])
+
+if __name__ == "__main__":
+    demo.launch()
+
+'''
+pipe = None
+stop_inference = False
+
+
 
 def respond(
     message,
@@ -129,3 +245,4 @@ with gr.Blocks(css=fancy_css) as demo:
 
 if __name__ == "__main__":
     demo.launch()
+'''
