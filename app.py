@@ -11,7 +11,7 @@ PLAYER_STATS_URL = "https://api.sportsdata.io/v3/nfl/stats/json/PlayerSeasonStat
 
 CURRENT_SEASON = 2025
 
-headers = {"Ocp-Apim-Subscription-Key": SPORTS_IO_API_KEY}
+params = {"key": SPORTS_IO_API_KEY}
 
 # Fancy styling
 fancy_css = """
