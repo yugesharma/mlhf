@@ -63,8 +63,8 @@ def fetch_news(query: str):
 
     results = []
     for article in articles:
-        print(article["Title"])
-        if query.lower() in (article.get("Title", "") + article[0].get("Content", "")).lower():
+        print(article.get("Title", ""))
+        if query.lower() in (article.get("Title", "") + article.get("Content", "")).lower():
             date = datetime.fromisoformat(article["Updated"])
             results.append({
                 "title": article["Title"],
