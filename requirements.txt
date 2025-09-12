@@ -1,2 +1,6 @@
 transformers
 torch
+numpy
+faiss-cpu
+sentence-transformers
+gradio
