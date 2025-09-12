@@ -1,160 +1,100 @@
 import gradio as gr
 from huggingface_hub import InferenceClient
-import os
-import requests
-from datetime import datetime
+import json
+import faiss
+import numpy as np
+from sentence_transformers import SentenceTransformer
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
-SPORTS_IO_API_KEY = os.getenv("SPORTS_API_KEY")
-NEWS_URL = f"https://api.sportsdata.io/v3/nfl/scores/json/News?key={SPORTS_IO_API_KEY}"
-PLAYERS_URL = f"https://api.sportsdata.io/v3/nfl/scores/json/Players?key={SPORTS_IO_API_KEY}"
-PLAYER_STATS_URL = "https://api.sportsdata.io/v3/nfl/stats/json/PlayerSeasonStatsByPlayerID/{season}/{playerid}?key={api_key}"
+db=faiss.read_index("database/players.index")
+with open("database/metadata.json") as f:
+    metadata=json.load(f)
 
-CURRENT_SEASON = 2025
+model=SentenceTransformer("intfloat/e5-small-v2")
 
-#headers = {"Ocp-Apim-Subscription-Key": SPORTS_IO_API_KEY}
+llmName="Qwen/Qwen3-0.6B"
+tokenizer=AutoTokenizer.from_pretrained(llmName)
+llm=AutoModelForCausalLM.from_pretrained(
+    llmName,
+    torch_dtype="auto",
+    device_map="auto"
+)
 
-# Fancy styling
-fancy_css = """
-#main-container {
-    background-color: #f0f0f0;
-    font-family: 'Arial', sans-serif;
-}
-.gradio-container {
-    max-width: 700px;
-    margin: 0 auto;
-    padding: 20px;
-    background: white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
-}
-.gr-button {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-}
-.gr-button:hover {
-    background-color: #45a049;
-}
-.gr-slider input {
-    color: #4CAF50;
-}
-.gr-chat {
-    font-size: 16px;
-}
-#title {
-    text-align: center;
-    font-size: 2em;
-    margin-bottom: 20px;
-    color: #333;
-}
-"""
+def chatBot(query):
+    db=faiss.read_index("database/players.index")
+    with open("database/metadata.json") as f:
+        metadata=json.load(f)
 
-def fetch_news(query: str):
+    model=SentenceTransformer("intfloat/e5-small-v2")
+
+    llmName="Qwen/Qwen3-0.6B"
+    tokenizer=AutoTokenizer.from_pretrained(llmName)
+    llm=AutoModelForCausalLM.from_pretrained(
+        llmName,
+        torch_dtype="auto",
+        device_map="auto"
+    )
+    # query=input("\nEnter your question: \n")
+    qEmbed=model.encode([f"query: {query}"], normalize_embeddings=True)
+    k=3
+    score, index=db.search(np.array(qEmbed), k)
+    # print(index, dis)
+
+    contextList=[]
+    for rank, idx in enumerate(index[0]):
+        item=metadata[idx]
+        # print(item)
+        contextList.append(item['text'])
+    context="\n".join(contextList)
+        # print(f"\n[{rank}] Team: {item['team']} | Type: {item['type']} | Score: {score[0][rank]}")
+        # print(f"Text: {item['text']}")
+
+    prompt = f"""
+    Answer the question based only on the following context:
+    {context}
+    Answer the question based on the above context: {query}.
+    Provide a detailed answer.
+    Don’t justify your answers.
+    Don’t give information not mentioned in the CONTEXT INFORMATION.
+    Do not say "according to the context" or "mentioned in the context" or similar.
+    """
+
+    messages = [
+        {"role": "user", "content": prompt}
+    ]
+
+    #For results with thinking content, comment out below code and comment the code under 'without thinking content'
+
+    text=tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=True
+    )
+
+    model_inputs=tokenizer([text], return_tensors="pt").to(llm.device)
+    generated_ids = llm.generate(
+        **model_inputs,
+        max_new_tokens=1024
+    )
+
+    output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() 
+    #parsing thinking content
     try:
-        resp = requests.get(NEWS_URL, timeout=10)
-        resp.raise_for_status()
-        articles = resp.json()
-    except Exception as e:
-        return f"⚠️ News API error: {e}"
+        # rindex finding 151668 (</think>)
+        index = len(output_ids) - output_ids[::-1].index(151668)
+    except ValueError:
+        index = 0
 
-    results = []
-    for article in articles:
-        print(article.get("Title", ""))
-        if query.lower() in (article.get("Title", "") + article.get("Content", "")).lower():
-            date = datetime.fromisoformat(article["Updated"])
-            results.append({
-                "title": article["Title"],
-                "content": article["Content"],
-                "source": article["Source"],
-                "updated": date.strftime("%B %d, %Y %I:%M %p")
-            })
+    thinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
+    content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n") 
+    return content
 
-    if not results:
-        return f"No news found for '{query}'."
-
-    results = sorted(results, key=lambda x: x["updated"], reverse=True)[:3]
-    formatted = "### 📰 Latest News\n"
-    for r in results:
-        formatted += f"**{r['title']}**  \n{r['content'][:250]}...  \n"
-        formatted += f"_Source: {r['source']} • {r['updated']}_\n\n"
-    return formatted
-
-def fetch_player_stats(player_name: str):
-    try:
-        resp = requests.get(PLAYERS_URL, timeout=15)
-        resp.raise_for_status()
-        players = resp.json()
-    except Exception as e:
-        return f"⚠️ Player lookup error: {e}"
-
-    # Find player by name
-    player = next((p for p in players if player_name.lower() in p["Name"].lower()), None)
-    if not player:
-        return None  # Not a player
-
-    player_id = player["PlayerID"]
-    team = player.get("Team", "Unknown")
-    position = player.get("Position", "N/A")
-
-    # Fetch season stats
-    try:
-        stats_url = PLAYER_STATS_URL.format(season=CURRENT_SEASON, playerid=player_id, api_key = SPORTS_IO_API_KEY)
-        resp = requests.get(stats_url, timeout=10)
-        resp.raise_for_status()
-        stats = resp.json()
-    except Exception as e:
-        return f"⚠️ Stats fetch error: {e}"
-
-    if not stats:
-        return f"📊 No stats available yet for {player_name} ({CURRENT_SEASON})."
-
-    formatted = f"### 📊 {player_name} ({team}, {position}) — {CURRENT_SEASON} Season Stats\n"
-    if position in ["QB", "Quarterback"]:
-        formatted += f"- Passing Yards: {stats[0].get('PassingYards', 0)}\n"
-        formatted += f"- Passing TDs: {stats[0].get('PassingTouchdowns', 0)}\n"
-        formatted += f"- Interceptions: {stats[0].get('PassingInterceptions', 0)}\n"
-    elif position in ["RB", "Running Back"]:
-        formatted += f"- Rushing Yards: {stats[0].get('RushingYards', 0)}\n"
-        formatted += f"- Rushing TDs: {stats[0].get('RushingTouchdowns', 0)}\n"
-    elif position in ["WR", "TE"]:
-        formatted += f"- Receiving Yards: {stats[0].get('ReceivingYards', 0)}\n"
-        formatted += f"- Receiving TDs: {stats[0].get('ReceivingTouchdowns', 0)}\n"
-        formatted += f"- Receptions: {stats[0].get('Receptions', 0)}\n"
-    else:
-        formatted += f"- Games Played: {stats[0].get('Played', 0)}\n"
-        formatted += f"- Fantasy Points: {stats[0].get('FantasyPoints', 0)}\n"
-
-    return formatted
-
-def nfl_chatbot(query: str, history: list):
-    news = fetch_news(query)
-    stats = fetch_player_stats(query)
-
-    if stats is None:
-        reply = f"{news}\n\n(ℹ️ No player stats — likely a coach.)"
-    else:
-        reply = f"{news}\n\n{stats}"
-
-    history.append((query, reply))
-    return history, ""
-
-
-
-with gr.Blocks(css=fancy_css) as demo:
-    gr.Markdown("# 🏈 NFL News + Stats Chatbot")
-    gr.Markdown("Ask about any NFL player or coach for the **latest news and stats**.")
-
-    chatbot = gr.Chatbot()
-    query = gr.Textbox(label="Enter player or coach name")
-    stats_btn = gr.Button("Get Stats")
-    news_btn = gr.Button("Get News")
-
-    stats_btn.click(nfl_chatbot, [query, chatbot], [chatbot, query])
-    query.submit(nfl_chatbot, [query, chatbot], [chatbot, query])
+demo=gr.Interface(
+    fn=chatBot,
+    inputs=["text"],
+    outputs=["text"]
+)
 
 if __name__ == "__main__":
     demo.launch()
