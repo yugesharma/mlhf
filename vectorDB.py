@@ -4,9 +4,9 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from pathlib import Path
 
-dataFile=Path("playersChunkedBetter.json")
-indexFile=Path("players.index")
-metaFile=Path("metadata.json")
+dataFile=Path("../playersChunkedBetter.json")
+indexFile=Path("database/players.index")
+metaFile=Path("database/metadata.json")
 
 with open(dataFile, "r") as f:
     data=json.load(f)
@@ -27,10 +27,11 @@ for i, entry in enumerate (data):
     })
     print(i)
 print('0')
-embeddings=model.encode(texts, batch_size=16, convert_to_numpy=True)
+embeddings=model.encode(texts, batch_size=16, convert_to_numpy=True, normalize_embeddings=True)
+
 dim=embeddings.shape[1]
 print('1')
-index=faiss.IndexFlatL2(dim)
+index=faiss.IndexFlatIP(dim)
 index.add(embeddings)
 print('2')
 faiss.write_index(index, str(indexFile))
@@ -40,13 +41,13 @@ with open(metaFile, 'w') as f:
 
 print('done')
 
-query="is patrick mahome good"
-query_embedding=model.encode([query])
+query="Kedon slovis experience" 
+query_embedding=model.encode([f"query: {query}"], normalize_embeddings=True)
 
 k=2
-distances, indices=index.search(query_embedding,k)
+score, indx=index.search(query_embedding,k)
 
-print(f"Query{query}")
+print(f"Query: {query}")
 
-for i, idx in enumerate(indices[0]):
-    print(f"{texts[idx]} (Distance: {distances[0][i]})")
+for i, idx in enumerate(indx[0]):
+    print(f"{texts[idx]} (cosine sim: {score[0][i]})")
