@@ -34,8 +34,19 @@ print("Type 'end' to quit")
 #         print(f"Text: {item['text']}")
 
 
-query="tell me about kedon slovis"
+llmName="Qwen/Qwen3-0.6B"
+tokenizer=AutoTokenizer.from_pretrained(llmName)
+llm=AutoModelForCausalLM.from_pretrained(
+    llmName,
+    torch_dtype="auto",
+    device_map="auto"
+)
+
+
+
+query=input("\nEnter your question: \n")
     
+
 
 qEmbed=model.encode([f"query: {query}"], normalize_embeddings=True)
 
@@ -62,13 +73,7 @@ Don’t give information not mentioned in the CONTEXT INFORMATION.
 Do not say "according to the context" or "mentioned in the context" or similar.
 """
 
-llmName="Qwen/Qwen3-0.6B"
-tokenizer=AutoTokenizer.from_pretrained(llmName)
-llm=AutoModelForCausalLM.from_pretrained(
-    llmName,
-    torch_dtype="auto",
-    device_map="auto"
-)
+
 messages = [
     {"role": "user", "content": prompt}
 ]
@@ -103,17 +108,6 @@ content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("
 print("thinking content: ", thinking_content )
 
 
-#without thinking content
-'''
-model_inputs=tokenizer(prompt, return_tensors="pt").to(llm.device)
-generated_ids = llm.generate(
-    **model_inputs,
-    max_new_tokens=1024
-)
-
-output_ids = generated_ids[0][len(model_inputs.input_ids[0]):]
-content = tokenizer.decode(output_ids, skip_special_tokens=True).strip("\n")
-'''
 
 print("content: ", content)
 
