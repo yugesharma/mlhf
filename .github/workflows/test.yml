@@ -25,3 +25,17 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: pytest -q
+      - name: Notify Slack of Test
+        if: always()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_TEST_WEBHOOK }}
+          SLACK_CHANNEL: test-logs
+          SLACK_USERNAME: GitHubBot
+          SLACK_TITLE: "Test Results: ${{ github.repository }}"
+          SLACK_COLOR: ${{ job.status == 'success' && '#2EB67D' || '#E01E5A' }}
+          SLACK_MESSAGE: |
+            *${{ github.actor }}* triggered tests on branch *${{ github.ref_name }}*
+            Status: *${{ job.status }}*
+            Commit: ${{ github.event.head_commit.message }}
+            [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
