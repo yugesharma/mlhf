@@ -1,4 +1,4 @@
-import gradio as gr
+import gradio as gr # type: ignore
 from huggingface_hub import InferenceClient
 import json
 import faiss
@@ -6,44 +6,118 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-fancy_css = """
-#main-container {
-    background-color: #f0f0f0;
-    font-family: 'Arial', sans-serif;
+nfl_css = """
+@import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&display=swap');
+
+:root{
+  --nfl-blue:#013369;
+  --nfl-red:#D50A0A;
+  --nfl-silver:#A5ACAF;
+  --turf:#0b6623;
+  --yard:rgba(255,255,255,0.12);
 }
-.gradio-container {
-    max-width: 700px;
-    margin: 0 auto;
-    padding: 20px;
-    background: white;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 10px;
+
+#main-container{
+  font-family:'Teko',sans-serif;
+  background:
+    linear-gradient(90deg,transparent 0 97%,var(--yard) 97% 100%),
+    repeating-linear-gradient(0deg,var(--yard) 0 2px,transparent 2px 60px),
+    radial-gradient(circle at 20% 10%,rgba(255,255,255,0.05),transparent 40%),
+    linear-gradient(180deg,rgba(0,0,0,0.35),rgba(0,0,0,0.35)),
+    linear-gradient(180deg,#0b6623,#0a5a1f);
+  min-height:100vh;
+  background-size:cover;
+  background-attachment:fixed;
+  color:#fff;
 }
-.gr-button {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 10px 20px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
+
+.gradio-container{
+  max-width:860px;
+  margin:24px auto;
+  padding:24px;
+  background:rgba(1,51,105,0.85);
+  box-shadow:0 12px 28px rgba(0,0,0,0.6);
+  border-radius:16px;
+  border:2px solid var(--nfl-silver);
+  color:#fff;
 }
-.gr-button:hover {
-    background-color: #45a049;
+
+#title h1{
+  text-align:center;
+  font-size:3.2em;
+  letter-spacing:1px;
+  margin:8px 0 20px;
+  color:#fff;
+  text-shadow:0 3px 0 var(--nfl-red),0 6px 12px rgba(0,0,0,0.6);
 }
-.gr-slider input {
-    color: #4CAF50;
+
+.gr-button{
+  background:linear-gradient(180deg,var(--nfl-red),#9d0808);
+  color:#fff;
+  border:2px solid var(--nfl-silver);
+  border-radius:10px;
+  padding:12px 22px;
+  cursor:pointer;
+  text-transform:uppercase;
+  letter-spacing:.8px;
+  transition:transform .15s ease,box-shadow .15s ease,filter .15s ease;
 }
-.gr-chat {
-    font-size: 16px;
+
+.gr-button:hover{
+  transform:translateY(-1px) scale(1.03);
+  box-shadow:0 6px 16px rgba(213,10,10,0.4);
+  filter:saturate(1.1);
 }
-#title {
-    text-align: center;
-    font-size: 2em;
-    margin-bottom: 20px;
-    color: #333;
+
+.gr-button:active{
+  transform:translateY(0) scale(0.99);
+}
+
+.gr-input,.gr-textarea,.gr-text,.gr-output-text,textarea,input,select{
+  background-color:rgba(165,172,175,0.15) !important;
+  color:#fff !important;
+  border:1px solid var(--nfl-silver) !important;
+  padding:12px 14px;
+  border-radius:8px;
+  font-size:1.05em;
+}
+
+.gr-output-text{
+  background-color:rgba(1,51,105,0.35) !important;
+  border:2px solid var(--nfl-red) !important;
+}
+
+label,.gr-label{
+  color:#e6edf2 !important;
+  font-weight:600;
+  font-size:1.05em;
+  margin-bottom:6px;
+  letter-spacing:.5px;
+  text-transform:uppercase;
+}
+
+.gr-slider>label{
+  color:#fff !important;
+}
+
+.gr-slider>div>div>input[type="range"]{
+  accent-color:var(--nfl-red);
+}
+
+.gr-slider>div>div>span{
+  color:#fff !important;
+}
+
+.gradio-container a,a{
+  color:#ffeb99;
+  text-decoration:none;
+}
+
+.gradio-container a:hover,a:hover{
+  text-decoration:underline;
 }
 """
+
 
 def chatBot(query,  
     max_tokens,
@@ -141,19 +215,19 @@ def chatBot(query,
 
 demo = gr.Interface(
     fn=chatBot,
-    inputs=["text"],
-    outputs=["text"],
-    additional_inputs=[
-    gr.Slider(minimum=1, maximum=2048, value=512, step=1, label="Max new tokens"),
-    gr.Slider(minimum=0.1, maximum=2.0, value=0.7, step=0.1, label="Temperature"),
-    gr.Slider(minimum=0.1, maximum=1.0, value=0.95, step=0.05, label="Top-p (nucleus sampling)"),
-    gr.Checkbox(label="Use Local Model", value=False)
-    ]
+    inputs=[
+        gr.Textbox(label="Ask about a player...", placeholder="e.g., Who is Deshaun Watson?", lines=2),
+        gr.Slider(minimum=1, maximum=2048, value=512, step=1, label="Max New Tokens"),
+        gr.Slider(minimum=0.1, maximum=2.0, value=0.7, step=0.1, label="Temperature"),
+        gr.Slider(minimum=0.1, maximum=1.0, value=0.95, step=0.05, label="Top-P (Nucleus Sampling)"),
+        gr.Checkbox(label="Use Local Model", value=False, info="Uncheck to use Hugging Face Inference API.")
+    ],
+    outputs=[gr.Textbox(label="NFL Bot's Answer", lines=10, max_lines=30)],
 )
 
-with gr.Blocks(css=fancy_css) as chatbot:
+with gr.Blocks(css=nfl_css, elem_id="main-container") as chatbot:
     with gr.Row():
-        gr.Markdown("<h1 style='text-align: center;'>🌟 Fancy AI Chatbot 🌟</h1>")
+        gr.Markdown("<div id='title'><h1>NFL News Bot 🏈</h1></div>")
         gr.LoginButton()
     demo.render()
 
