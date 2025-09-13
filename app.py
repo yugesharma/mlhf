@@ -6,6 +6,24 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from dotenv import load_dotenv
+load_dotenv()
+
+
+db=faiss.read_index("database/players.index")
+with open("database/metadata.json") as f:
+    metadata=json.load(f)
+
+model=SentenceTransformer("intfloat/e5-small-v2")
+
+llmName="Qwen/Qwen3-0.6B"
+tokenizer=AutoTokenizer.from_pretrained(llmName)
+llm=AutoModelForCausalLM.from_pretrained(
+    llmName,
+    torch_dtype="auto",
+    device_map="auto"
+)
+
 nfl_css = """
 @import url('https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&display=swap');
 
@@ -125,6 +143,7 @@ def chatBot(query,
     top_p,
     hf_token: gr.OAuthToken,
     use_local_model: bool):
+
 
     API_MODEL_NAME = "Qwen/Qwen2-7B-Instruct" 
     print("Loading RAG database and retriever model...")
