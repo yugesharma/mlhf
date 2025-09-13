@@ -6,49 +6,86 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
-db=faiss.read_index("database/players.index")
-with open("database/metadata.json") as f:
-    metadata=json.load(f)
+fancy_css = """
+#main-container {
+    background-color: #f0f0f0;
+    font-family: 'Arial', sans-serif;
+}
+.gradio-container {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 20px;
+    background: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 10px;
+}
+.gr-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+.gr-button:hover {
+    background-color: #45a049;
+}
+.gr-slider input {
+    color: #4CAF50;
+}
+.gr-chat {
+    font-size: 16px;
+}
+#title {
+    text-align: center;
+    font-size: 2em;
+    margin-bottom: 20px;
+    color: #333;
+}
+"""
 
-model=SentenceTransformer("intfloat/e5-small-v2")
+def chatBot(query,  
+    max_tokens,
+    temperature,
+    top_p,
+    hf_token: gr.OAuthToken,
+    use_local_model: bool):
 
-llmName="Qwen/Qwen3-0.6B"
-tokenizer=AutoTokenizer.from_pretrained(llmName)
-llm=AutoModelForCausalLM.from_pretrained(
-    llmName,
-    torch_dtype="auto",
-    device_map="auto"
-)
-
-def chatBot(query):
-    db=faiss.read_index("database/players.index")
+    API_MODEL_NAME = "Qwen/Qwen2-7B-Instruct" 
+    print("Loading RAG database and retriever model...")
+    db = faiss.read_index("database/players.index")
     with open("database/metadata.json") as f:
-        metadata=json.load(f)
+        metadata = json.load(f)
+    retriever_model = SentenceTransformer("intfloat/e5-small-v2")
+    print("RAG components loaded.")
 
-    model=SentenceTransformer("intfloat/e5-small-v2")
+    if use_local_model:
+        print("[MODE] Using local model.")
+        llmName = "Qwen/Qwen3-0.6B"
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(llmName)
+            llm = AutoModelForCausalLM.from_pretrained(
+                llmName,
+                torch_dtype="auto",
+                device_map="auto"
+            )
+            print(f"Local model '{llmName}' loaded successfully.")
+        except Exception as e:
+            print(f"Error loading local model: {e}")
+            llm, tokenizer = None, None
+    else:
+        print(f"[MODE] Using Hugging Face API for model: openai/gpt-oss-20b")
+        if hf_token is None or not getattr(hf_token, "token", None):
+            raise ValueError("Hugging Face token not found. Please set the HF_TOKEN environment variable.")
+        client = InferenceClient(model="openai/gpt-oss-20b", token=hf_token.token)
+        print("API client initialized.")
+    qEmbed = retriever_model.encode([f"query: {query}"], normalize_embeddings=True)
+    k = 3
+    score, index = db.search(np.array(qEmbed), k)
 
-    llmName="Qwen/Qwen3-0.6B"
-    tokenizer=AutoTokenizer.from_pretrained(llmName)
-    llm=AutoModelForCausalLM.from_pretrained(
-        llmName,
-        torch_dtype="auto",
-        device_map="auto"
-    )
-    # query=input("\nEnter your question: \n")
-    qEmbed=model.encode([f"query: {query}"], normalize_embeddings=True)
-    k=3
-    score, index=db.search(np.array(qEmbed), k)
-    # print(index, dis)
-
-    contextList=[]
-    for rank, idx in enumerate(index[0]):
-        item=metadata[idx]
-        # print(item)
-        contextList.append(item['text'])
-    context="\n".join(contextList)
-        # print(f"\n[{rank}] Team: {item['team']} | Type: {item['type']} | Score: {score[0][rank]}")
-        # print(f"Text: {item['text']}")
-
+    contextList = [metadata[idx]['text'] for idx in index[0]]
+    context = "\n".join(contextList)
     prompt = f"""
     Answer the question based only on the following context:
     {context}
@@ -63,41 +100,65 @@ def chatBot(query):
         {"role": "user", "content": prompt}
     ]
 
-    #For results with thinking content, comment out below code and comment the code under 'without thinking content'
+    if use_local_model:
+        if not llm or not tokenizer:
+            return "Local model is not loaded. Please check for errors at startup."
+            
+        text = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=True  
+        )
+        model_inputs = tokenizer([text], return_tensors="pt").to(llm.device)
+        generated_ids = llm.generate(
+            **model_inputs,
+            max_new_tokens=max_tokens,
+            do_sample=True,
+            temperature=temperature,
+            top_p=top_p,
+        )
+        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+        try:
+            # rindex finding 151668 (</think>)
+            index = len(output_ids) - output_ids[::-1].index(151668)
+        except ValueError:
+            index = 0
+        thinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
+        content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+        return content
+    
+    else:
+        try:
+            response = client.chat_completion(
+                messages,
+                max_tokens=1024,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Error calling API: {e}"
 
-    text=tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True,
-        enable_thinking=True
-    )
 
-    model_inputs=tokenizer([text], return_tensors="pt").to(llm.device)
-    generated_ids = llm.generate(
-        **model_inputs,
-        max_new_tokens=1024
-    )
-
-    output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist() 
-    #parsing thinking content
-    try:
-        # rindex finding 151668 (</think>)
-        index = len(output_ids) - output_ids[::-1].index(151668)
-    except ValueError:
-        index = 0
-
-    thinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
-    content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n") 
-    return content
-
-demo=gr.Interface(
+demo = gr.Interface(
     fn=chatBot,
     inputs=["text"],
-    outputs=["text"]
+    outputs=["text"],
+    additional_inputs=[
+    gr.Slider(minimum=1, maximum=2048, value=512, step=1, label="Max new tokens"),
+    gr.Slider(minimum=0.1, maximum=2.0, value=0.7, step=0.1, label="Temperature"),
+    gr.Slider(minimum=0.1, maximum=1.0, value=0.95, step=0.05, label="Top-p (nucleus sampling)"),
+    gr.Checkbox(label="Use Local Model", value=False)
+    ]
 )
 
+with gr.Blocks(css=fancy_css) as chatbot:
+    with gr.Row():
+        gr.Markdown("<h1 style='text-align: center;'>🌟 Fancy AI Chatbot 🌟</h1>")
+        gr.LoginButton()
+    demo.render()
+
 if __name__ == "__main__":
-    demo.launch()
+    chatbot.launch()
 
 '''
 pipe = None
