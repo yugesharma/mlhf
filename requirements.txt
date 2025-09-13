@@ -4,3 +4,5 @@ numpy
 faiss-cpu
 sentence-transformers
 gradio
+accelerate
+gradio[oauth]
