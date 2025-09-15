@@ -165,11 +165,11 @@ def instrument(func):
 
 @instrument
 def chatBot(
-    hf_token: gr.OAuthToken,
     query,
     max_tokens,
     temperature,
     top_p,
+    hf_token: gr.OAuthToken,
     use_local_model: bool):
 
     if use_local_model:
