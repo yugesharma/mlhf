@@ -5,6 +5,7 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
+from prometheus_client import Counter, Gauge
 
 
 db=faiss.read_index("database/players.index")
@@ -130,12 +131,46 @@ label,.gr-label{
 """
 
 
-def chatBot(query,
+REQUEST_COUNT = Counter('chatbot_requests_total', 'Total number of chatbot requests received', ['model_type'])
+REQUESTS_IN_PROGRESS = Gauge('chatbot_requests_in_progress', 'Number of chatbot requests currently in progress')
+
+def log_metrics():
+    print("\n--- basic metrics logging ---")
+    for value in REQUEST_COUNT.collect():
+            for i in value.samples:
+                if i.name == "chatbot_requests_total" and (i.labels['model_type'] == "local" or i.labels['model_type'] == "api"):
+                    print(f"Total requests {i.labels['model_type']}: {i.value}")
+    for value in REQUESTS_IN_PROGRESS.collect():
+        print(f"Requests in progress {value.samples[0].value}")
+    print("------------------------\n")
+
+def instrument(func):
+    def wrapper(hf_token: gr.OAuthToken, *args, **kwargs):
+        print(f"ARGS: {args[4]}")
+        if args[4] :
+            model = "local"
+        else:
+            model = "api"
+        print(f"MODEL: {model}")
+        REQUESTS_IN_PROGRESS.inc()
+        try:
+            result = func(hf_token, *args, **kwargs)
+            REQUEST_COUNT.labels(model_type=model).inc()
+            return result
+        finally:
+            REQUESTS_IN_PROGRESS.dec()
+            log_metrics()
+    return wrapper
+
+
+@instrument
+def chatBot(
+    hf_token: gr.OAuthToken,
+    query,
     max_tokens,
     temperature,
     top_p,
-    use_local_model: bool,
-    hf_token: gr.OAuthToken):
+    use_local_model: bool):
 
     if use_local_model:
         print("[MODE] Using local model.")
