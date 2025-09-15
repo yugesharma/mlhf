@@ -1,2 +1,11 @@
+huggingface-hub
 transformers
 torch
+numpy
+faiss-cpu
+sentence-transformers
+gradio
+accelerate
+gradio[oauth]
+hf_xet
+prometheus-client

@@ -2,8 +2,6 @@ name: Notify Slack on Commit
 
 on:
   push:
-    branches:
-      - akshay
 
 jobs:
   slackNotification:
