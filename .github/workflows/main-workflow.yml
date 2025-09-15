@@ -37,7 +37,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest gradio[oauth] huggingface_hub transformers torch numpy faiss-cpu==1.12.0 sentence-transformers accelerate prometheus-client
+          pip install pytest gradio[oauth] huggingface_hub transformers torch numpy faiss-cpu==1.12.0 sentence-transformers accelerate hf_xet prometheus-client
 
       - name: Run pytest with HF token
         env:
