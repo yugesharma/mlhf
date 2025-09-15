@@ -64,11 +64,10 @@ jobs:
           fetch-depth: 0
           lfs: true
       - name: Push to hub
-        if: sucecss()
+        if: success()
         env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push --force https://yugesharma:$HF_TOKEN@huggingface.co/spaces/NFL-players/NFL-players HEAD:main
-
+          HF_TOKEN: ${{ secrets.HF_TEST_TOKEN }}
+        run: git push --force https://alshinde15:$HF_TEST_TOKEN@huggingface.co/spaces/alshinde15/CSDS553_Demo_copy HEAD:main
       #4. Notify Slack of successful test and push to HF
       - name: Notify Slack of Test Success
         if: success()
