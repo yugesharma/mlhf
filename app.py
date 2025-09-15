@@ -7,7 +7,6 @@ from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from prometheus_client import Counter, Gauge
 
-
 db=faiss.read_index("database/players.index")
 with open("database/metadata.json") as f:
     metadata=json.load(f)
