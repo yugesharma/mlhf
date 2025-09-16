@@ -146,8 +146,8 @@ def log_metrics():
 
 def instrument(func):
     def wrapper(hf_token: gr.OAuthToken, *args, **kwargs):
-        print(f"ARGS: {args[5]}")
-        if args[5] :
+        print(f"ARGS: {args[4]}")
+        if args[4] :
             model = "local"
         else:
             model = "api"
