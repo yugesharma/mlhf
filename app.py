@@ -146,8 +146,8 @@ def log_metrics():
 
 def instrument(func):
     def wrapper(hf_token: gr.OAuthToken, *args, **kwargs):
-        print(f"ARGS: {args[4]}")
-        if args[4] :
+        print(f"ARGS: {args[5]}")
+        if args[5] :
             model = "local"
         else:
             model = "api"
@@ -165,11 +165,11 @@ def instrument(func):
 
 @instrument
 def chatBot(
+    hf_token: gr.OAuthToken,
     query,
     max_tokens,
     temperature,
     top_p,
-    hf_token: gr.OAuthToken,
     use_local_model: bool):
 
     if use_local_model:
