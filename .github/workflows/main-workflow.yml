@@ -1,4 +1,4 @@
-name: CI with Slack and Hugging Face
+name: Update with Slack and Hugging Face
 
 on:
   push:
