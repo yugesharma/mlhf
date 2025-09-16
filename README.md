@@ -55,11 +55,9 @@ User Query → e5-small-v2 → FAISS top‑k → Prompt w/ context → LLM (loca
 ├─ app.py                      
 ├─ database/
 │  ├─ players.index           
-│  └─ metadata.json           
-├─ assets/
-│  └─ football.jpg           
+│  └─ metadata.json                 
 ├─ tests/
-│  └─ test_api.py             
+│  └─ test_smoke.py             
 ├─ requirements.txt
 └─ README.md
 ```
