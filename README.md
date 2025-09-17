@@ -1,5 +1,6 @@
 ---
-title: NFL Chatbot
+title: CSDS553 Demo
+emoji: 💬
 colorFrom: yellow
 colorTo: purple
 sdk: gradio
