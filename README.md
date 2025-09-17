@@ -1,3 +1,18 @@
+---
+title: NFL Chatbot
+colorFrom: yellow
+colorTo: purple
+sdk: gradio
+sdk_version: 5.42.0
+app_file: app.py
+pinned: false
+hf_oauth: true
+hf_oauth_scopes:
+- inference-api
+---
+
+
+
 # NFL Chatbot — RAG‑powered NFL Bot Players & Teams (2025)
 
 For the 2025 season, a lightweight Retrieval-Augmented Generation (RAG) chatbot will respond to inquiries on NFL players and teams. It uses compact, effective LLMs in conjunction with a dense-vector index (FAISS) constructed from SportsDataIO roster/news data to provide quick, source-grounded replies through a Gradio user interface.
