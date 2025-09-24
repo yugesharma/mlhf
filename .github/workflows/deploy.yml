@@ -18,15 +18,15 @@ jobs:
           host: ${{ secrets.VM_HOST }}  
           username: ${{ secrets.VM_USER }} 
           key: ${{ secrets.SSH_PRIVATE_KEY }} 
-          port: 22002
+          port: 22001
           script: |
             # Step 2: Create virtual environment
             python3 -m venv cs2_venv
             source cs2_venv/bin/activate
 
             # Step 3: Clone repository using a token stored in secrets
-            git clone https://github.com/rcpaffenroth/CS553_example
-            cd CS553_example
+            git clone https://https://github.com/yugesharma/mlhf/
+            cd mlhf
             git pull origin monitoring
 
             # Step 4: Install dependencies
