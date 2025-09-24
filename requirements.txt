@@ -1,3 +1,4 @@
+huggingface-hub
 transformers
 torch
 numpy
@@ -6,3 +7,5 @@ sentence-transformers
 gradio
 accelerate
 gradio[oauth]
+hf_xet
+prometheus-client

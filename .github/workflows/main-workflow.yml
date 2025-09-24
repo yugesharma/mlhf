@@ -1,0 +1,85 @@
+name: Update with Slack and Hugging Face
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-test-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Send Slack notification on Commit
+      - name: Send Slack Notification
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+          SLACK_CHANNEL: commit-logs   
+          SLACK_USERNAME: GitHubBot
+          SLACK_COLOR: "##36c5f0"
+          SLACK_TITLE: "New Commit to ${{ github.repository }}"
+          SLACK_MESSAGE: |
+            *${{ github.actor }}* pushed commit:
+            > ${{ github.event.head_commit.message }}
+            Repo: ${{ github.repository }}
+            Branch: ${{ github.ref_name }}
+            [View Commit](${{ github.event.head_commit.url }})
+
+      #2. Test Commit
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pytest gradio[oauth] huggingface_hub transformers torch numpy faiss-cpu==1.12.0 sentence-transformers accelerate hf_xet prometheus-client
+
+      - name: Run pytest with HF token
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: pytest -q
+      #3. Notify Slack if Test Failure
+      - name: Notify Slack of Test Failure
+        if: failure()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_TEST }}
+          SLACK_CHANNEL: test-logs
+          SLACK_USERNAME: GitHubBot
+          SLACK_TITLE: "Test Failed: ${{ github.repository }}"
+          SLACK_COLOR: '#E01E5A'
+          SLACK_MESSAGE: |
+            *${{ github.actor }}* failed triggered tests on branch *${{ github.ref_name }}*
+            Status: *${{ job.status }}*
+            Commit: ${{ github.event.head_commit.message }}
+            [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+      #4. Push to HF is passes
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          lfs: true
+      - name: Push to hub
+        if: success()
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: git push --force https://yugesharma:$HF_TOKEN@huggingface.co/spaces/NFL-players/NFL-players HEAD:main
+      #5. Notify Slack of successful test and push to HF
+      - name: Notify Slack of Test Success
+        if: success()
+        uses: rtCamp/action-slack-notify@v2
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_TEST }}
+          SLACK_CHANNEL: test-logs
+          SLACK_USERNAME: GitHubBot
+          SLACK_TITLE: "Tests Passed & Pushed to Hugging Face"
+          SLACK_COLOR: '#2EB67D'
+          SLACK_MESSAGE: |
+            *${{ github.actor }}* trigged tests on branch *${{ github.ref_name }}*
+            Status: *${{ job.status }}*
+            Commit: ${{ github.event.head_commit.message }}
+            [View Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})

@@ -13,12 +13,12 @@ def test_api_requires_token():
     assert hf_token, "HF_TOKEN not set in environment"
 
     gen = app.chatBot(
-        query="Who is Patrick Mahomes",
-        max_tokens=8,
-        temperature=0.2,
-        top_p=0.9,
-        hf_token=Token(hf_token),
-        use_local_model=False,
+        Token(hf_token),
+        "Who is Patrick Mahomes",
+        8,
+        0.2,
+        0.9,
+        False,
     )
     
     assert "please log in" not in gen.lower()  # shouldn't get warning
