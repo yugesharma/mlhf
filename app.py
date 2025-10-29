@@ -5,8 +5,13 @@ import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from prometheus_client import Counter, Gauge
+from prometheus_client import Counter, Gauge, start_http_server
+from dotenv import load_dotenv
+import os
 
+load_dotenv()
+
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 db=faiss.read_index("database/players.index")
 with open("database/metadata.json") as f:
@@ -270,4 +275,5 @@ with gr.Blocks(css=nfl_css, elem_id="main-container") as chatbot:
     demo.render()
 
 if __name__ == "__main__":
+    start_http_server(8000) 
     chatbot.launch()
