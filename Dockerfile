@@ -15,5 +15,4 @@ EXPOSE 7860
 EXPOSE 8000
 EXPOSE 9100
 ENV GRADIO_SERVER_NAME="0.0.0.0"
-
-CMD bash -c "prometheus-node-exporter --web.listen-address=':9100' & python /opt/app/app.py"
+CMD bash -c "python /opt/app/vectorDB.py && prometheus-node-exporter --web.listen-address=':9100' & python /opt/app/app.py"
