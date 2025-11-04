@@ -4,7 +4,7 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from pathlib import Path
 
-dataFile=Path("../playersChunkedBetter.json")
+dataFile=Path("database/playersChunkedBetter.json")
 indexFile=Path("database/players.index")
 metaFile=Path("database/metadata.json")
 
