@@ -6,7 +6,11 @@ faiss-cpu==1.12.0
 sentence-transformers
 gradio
 accelerate
+<<<<<<< HEAD
+gradio[oauth]
+=======
 gradio[oauth]
 hf_xet
 prometheus-client
 python-dotenv
+>>>>>>> origin/main
