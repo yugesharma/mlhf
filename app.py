@@ -13,11 +13,15 @@ import time
 load_dotenv()
 
 HF_TOKEN = os.getenv("HF_TOKEN")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
 db=faiss.read_index("database/players.index")
 with open("database/metadata.json") as f:
     metadata=json.load(f)
 
+retriever_model=SentenceTransformer("intfloat/e5-small-v2")
+print("Loading RAG database and retriever model...")
+print("RAG components loaded.")
 retriever_model=SentenceTransformer("intfloat/e5-small-v2")
 print("Loading RAG database and retriever model...")
 print("RAG components loaded.")
@@ -144,11 +148,34 @@ def chatBot(
         model_inputs = tokenizer([text], return_tensors="pt").to(llm.device)
         generated_ids = llm.generate(
             **model_inputs,
+    if use_local_model:
+        if not llm or not tokenizer:
+            return "Local model is not loaded. Please check for errors at startup."
+            
+        text = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=True  
+        )
+        model_inputs = tokenizer([text], return_tensors="pt").to(llm.device)
+        generated_ids = llm.generate(
+            **model_inputs,
             max_new_tokens=max_tokens,
             do_sample=True,
             temperature=temperature,
             top_p=top_p,
         )
+        output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
+        try:
+            # rindex finding 151668 (</think>)
+            index = len(output_ids) - output_ids[::-1].index(151668)
+        except ValueError:
+            index = 0
+        thinking_content = tokenizer.decode(output_ids[:index], skip_special_tokens=True).strip("\n")
+        content = tokenizer.decode(output_ids[index:], skip_special_tokens=True).strip("\n")
+        return content
+    
         output_ids = generated_ids[0][len(model_inputs.input_ids[0]):].tolist()
         try:
             # rindex finding 151668 (</think>)
@@ -168,8 +195,24 @@ def chatBot(
             return response.choices[0].message.content
         except Exception as e:
             return f"Error calling API: {e}"
+        try:
+            response = client.chat_completion(
+                messages,
+                max_tokens=1024,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"Error calling API: {e}"
 
 
+demo = gr.Interface(
+    fn=chatBot,
+    inputs=[
+        gr.Textbox(label="Ask about a player...", placeholder="e.g., Who is Deshaun Watson?", lines=2),
+        gr.Slider(minimum=1, maximum=2048, value=512, step=1, label="Max New Tokens"),
+        gr.Slider(minimum=0.1, maximum=2.0, value=0.1, step=0.1, label="Temperature"),
+        gr.Slider(minimum=0.1, maximum=1.0, value=0.95, step=0.05, label="Top-P (Nucleus Sampling)"),
+        gr.Checkbox(label="Use Local Model", value=False, info="Uncheck to use Hugging Face Inference API."),
 demo = gr.Interface(
     fn=chatBot,
     inputs=[
@@ -292,6 +335,7 @@ label,.gr-label{
 with gr.Blocks(css=nfl_css, elem_id="main-container") as chatbot:
     with gr.Row():
         gr.Markdown("<div id='title'><h1>NFL News Bot 🏈</h1></div>")
+        gr.Markdown("<div id='title'><h1>NFL News Bot 🏈</h1></div>")
         gr.LoginButton()
     demo.render()
 
@@ -299,5 +343,8 @@ with gr.Blocks(css=nfl_css, elem_id="main-container") as chatbot:
 
 
 if __name__ == "__main__":
+    start_http_server(8000) 
+    chatbot.launch()
+
     start_http_server(8000) 
     chatbot.launch()
