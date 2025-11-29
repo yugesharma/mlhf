@@ -2,7 +2,6 @@ FROM python:3.10-slim
 
 WORKDIR /opt/app
 COPY . .
-RUN pip install --no-cache-dir -r /opt/app/requirements.txt
 
 # Install packages that we need. vim is for helping with debugging
 ENV DEBIAN_FRONTEND noninteractive
@@ -15,4 +14,5 @@ EXPOSE 7860
 EXPOSE 8000
 EXPOSE 9100
 ENV GRADIO_SERVER_NAME="0.0.0.0"
+RUN pip install --no-cache-dir -r /opt/app/requirements.txt
 CMD bash -c "python /opt/app/vectorDB.py && prometheus-node-exporter --web.listen-address=':9100' & python /opt/app/app.py"
