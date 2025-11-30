@@ -10,4 +10,3 @@ gradio[oauth]
 hf_xet
 prometheus-client
 python-dotenv
->>>>>>> origin/main

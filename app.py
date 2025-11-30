@@ -289,7 +289,8 @@ label,.gr-label{
 }
 """
 
-with gr.Blocks(css=nfl_css, elem_id="main-container") as chatbot:
+with gr.Blocks(elem_id="main-container") as chatbot:
+    gr.HTML(f"<style>{nfl_css}</style>")
     with gr.Row():
         gr.Markdown("<div id='title'><h1>NFL News Bot 🏈</h1></div>")
         gr.LoginButton()
@@ -300,4 +301,4 @@ with gr.Blocks(css=nfl_css, elem_id="main-container") as chatbot:
 
 if __name__ == "__main__":
     start_http_server(8000) 
-    chatbot.launch()
+    chatbot.launch(share=True)

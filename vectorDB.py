@@ -4,9 +4,10 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 from pathlib import Path
 
-dataFile=Path("database/playersChunkedBetter.json")
-indexFile=Path("database/players.index")
-metaFile=Path("database/metadata.json")
+base=Path(__file__).parent
+dataFile=base/"database/playersChunkedBetter.json"
+indexFile=base/"database/players.index"
+metaFile=base/"database/metadata.json"
 
 with open(dataFile, "r") as f:
     data=json.load(f)
