@@ -301,4 +301,4 @@ with gr.Blocks(elem_id="main-container") as chatbot:
 
 if __name__ == "__main__":
     start_http_server(8000) 
-    chatbot.launch(share=True)
+    chatbot.launch(share=True, server_port=7860)
