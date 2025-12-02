@@ -82,6 +82,7 @@ User Query → e5-small-v2 → FAISS top‑k → Prompt w/ context → LLM (loca
 The app instruments two Prometheus metrics:
 - `chatbot_requests_total{model_type="local|api"}` — counter
 - `chatbot_requests_in_progress` — counter
+- test
 
 
 
