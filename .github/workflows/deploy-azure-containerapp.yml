@@ -1,0 +1,36 @@
+name: Build and Deploy API to Azure Container Apps
+
+on:
+  push:
+    branches: [ "main" ] 
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        with:
+          azureCredentials: ${{ secrets.AZURE_CREDENTIALS }}
+
+          resourceGroup: NFLBOT_MAIN
+          containerAppName: nflbot
+
+          registryUrl: docker.io
+          registryUsername: ${{ secrets.DOCKERHUB_USERNAME }}
+          registryPassword: ${{ secrets.DOCKERHUB_TOKEN }}
+
+          appSourcePath: .
+          dockerfilePath: Dockerfile
+          imageToBuild: docker.io/${{ secrets.DOCKERHUB_USERNAME }}/nflbot:${{ github.sha }}
+
+          targetPort: 7860
+          ingress: external
